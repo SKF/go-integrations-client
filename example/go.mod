@@ -1,6 +1,6 @@
 module github.com/SKF/go-integrations-client/example
 
-go 1.29
+go 1.19
 
 replace github.com/SKF/go-integrations-client => ../
 
