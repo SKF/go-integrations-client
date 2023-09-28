@@ -34,6 +34,13 @@ type Integration struct {
 	CreatedAt   time.Time
 	Type        string
 	Version     int
+	AgentID     uuid.UUID
+	RootNode    RootNode
+}
+
+type RootNode struct {
+	ID   uuid.UUID
+	Type string
 }
 
 func (i Integration) IsRunning() bool {
@@ -47,6 +54,11 @@ func (i *Integration) FromInternal(g models.GetIntegrationResponse) {
 	i.Status = g.IntegrationDetails.Status.Status
 	i.CreatedAt = time.Unix(g.IntegrationDetails.CreatedTimestamp, 0).UTC()
 	i.Type = g.IntegrationDetails.Type
+	i.AgentID = uuid.UUID(g.IntegrationDetails.AgentID)
+	i.RootNode = RootNode{
+		ID:   uuid.UUID(g.IntegrationDetails.Config.RootNodeID),
+		Type: g.IntegrationDetails.Config.RootNodeType,
+	}
 
 	switch i.Status {
 	case StatusRunning, StatusStopped:
@@ -66,4 +78,36 @@ func (i *Integration) FromInternal(g models.GetIntegrationResponse) {
 	}
 
 	i.Version = int(version)
+}
+
+func (i Integration) GetOriginProviderID() uuid.UUID {
+	switch i.Version {
+	case IntegrationVersion1:
+		return i.AgentID
+	case IntegrationVersion2:
+		return i.ID
+	}
+
+	return uuid.EmptyUUID
+}
+
+func (i Integration) GetOriginProviderType() string {
+	switch i.Type {
+	case IntegrationTypeAnalyst:
+		switch i.Version {
+		case IntegrationVersion1:
+			return "TREEELEM"
+		case IntegrationVersion2:
+			return "@analyst"
+		}
+	case IntegrationTypeObserver:
+		switch i.Version {
+		case IntegrationVersion1:
+			return "OBSERVERNODE"
+		case IntegrationVersion2:
+			return "@observer"
+		}
+	}
+
+	return ""
 }
